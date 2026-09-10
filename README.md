@@ -28,7 +28,7 @@ docs/
   trajectory-dialogue.*       two-lane reader (from Zeng-Weijun/trajectory-viewer)
   trajectory-data.js          the export — window.EMPIRIA_RAW_TRAJECTORIES, 4.8 MB
   swe-fork.css                fork-only styling (capture-gap events)
-schema/swe-trajectory.schema.json   the field interface, machine-readable
+  schema/swe-trajectory.schema.json  the field interface, machine-readable
 tools/export_explorer_data.py       pack -> schema, re-runnable
 SCHEMA.md                  field interface: what is filled, what is reserved
 FIELD_COVERAGE.md          what made it out of the pack, and what did not
@@ -43,7 +43,7 @@ cp out/trajectory-data.js docs/
 
 ## The field interface
 
-`SCHEMA.md` + `schema/swe-trajectory.schema.json` define `swe-trajectory/1.0`.
+`SCHEMA.md` + `docs/schema/swe-trajectory.schema.json` define `swe-trajectory/1.0`.
 Every field is optional and a `null` renders as an omitted row, so a producer can
 start filling a reserved field at any time and it appears with no viewer change.
 Fields are tiered **A** (filled, read today), **B** (filled from pack files that

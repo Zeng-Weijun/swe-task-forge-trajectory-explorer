@@ -1,7 +1,7 @@
 # SWE trajectory field interface — `swe-trajectory/1.0`
 
 The contract between a producer (mining run + agent harness) and the two viewers
-in `docs/`. Machine-readable form: `schema/swe-trajectory.schema.json`.
+in `docs/`. Machine-readable form: `docs/schema/swe-trajectory.schema.json`.
 
 Both viewers read one global, `window.EMPIRIA_RAW_TRAJECTORIES` — an array of
 run objects. **Every field below is optional**; a viewer that finds `null` hides
