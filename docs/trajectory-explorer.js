@@ -857,5 +857,15 @@
   });
   window.addEventListener('resize', function () { setSidebarVisible(sidebarVisible); }, { passive: true });
 
+  (function pickInitialRun() {
+    var pool = categoryItems(activeCategory);
+    if (!pool.length) return;
+    var solved = pool.filter(function (t) { return t.situation === 'successful'; });
+    var best = (solved.length ? solved : pool).reduce(function (a, b) {
+      return (b.events || []).length > (a.events || []).length ? b : a;
+    });
+    selectedIndex = trajectories.indexOf(best);
+  })();
+
   renderAll();
 })();
