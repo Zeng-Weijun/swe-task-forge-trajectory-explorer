@@ -1,6 +1,10 @@
 # swe-task-forge · Trajectory Explorer
 
-Live page: **https://zeng-weijun.github.io/swe-task-forge-trajectory-explorer/**
+Two viewers over the same corpus, no build step:
+
+- **Linear explorer** — <https://zeng-weijun.github.io/swe-task-forge-trajectory-explorer/>
+- **Two-lane reader** — <https://zeng-weijun.github.io/swe-task-forge-trajectory-explorer/trajectory-dialogue.html>
+  (also embedded behind the explorer's *Two-lane reader* button; deep link with `?run=<shortId>`)
 
 83 agent rollouts (`codex:glm-5.3-flash`) over 47 SWE tasks from
 `minions_v148_pack_20260911`, rendered in the Empiria Labs *Trajectory Explorer*
@@ -19,10 +23,14 @@ and full commit-level mining provenance.
 ## What is in this repo
 
 ```
-docs/                      GitHub Pages site (open index.html)
-  trajectory-data.js       the export — window.EMPIRIA_RAW_TRAJECTORIES, 4.2 MB
-  trajectory-explorer.js   Empiria UI, patched (see NOTICE.md)
-tools/export_explorer_data.py   pack -> explorer schema, re-runnable
+docs/
+  index.html                  linear explorer
+  trajectory-dialogue.*       two-lane reader (from Zeng-Weijun/trajectory-viewer)
+  trajectory-data.js          the export — window.EMPIRIA_RAW_TRAJECTORIES, 4.8 MB
+  swe-fork.css                fork-only styling (capture-gap events)
+schema/swe-trajectory.schema.json   the field interface, machine-readable
+tools/export_explorer_data.py       pack -> schema, re-runnable
+SCHEMA.md                  field interface: what is filled, what is reserved
 FIELD_COVERAGE.md          what made it out of the pack, and what did not
 ```
 
@@ -32,6 +40,23 @@ Regenerate from a pack checkout:
 python3 tools/export_explorer_data.py ./out
 cp out/trajectory-data.js docs/
 ```
+
+## The field interface
+
+`SCHEMA.md` + `schema/swe-trajectory.schema.json` define `swe-trajectory/1.0`.
+Every field is optional and a `null` renders as an omitted row, so a producer can
+start filling a reserved field at any time and it appears with no viewer change.
+Fields are tiered **A** (filled, read today), **B** (filled from pack files that
+had no field before), **C** (interface written, nothing emits it yet).
+
+The Tier-C list, in order of visualisation value: per-step token usage ·
+full stdout per command · structured codex rollout · the agent's final diff ·
+per-test results · relay envelope · sampling params · timestamps on every event ·
+per-call file mutations · setup durations. Each already has a field waiting.
+
+Each run also carries a `capture` block declaring what its producer recorded, so
+a viewer can tell *"this run had no reasoning"* from *"this producer does not
+record reasoning"*.
 
 ## Read this before trusting a number
 

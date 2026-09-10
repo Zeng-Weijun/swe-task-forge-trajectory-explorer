@@ -13,6 +13,7 @@ PACK  = "/mnt/shared-storage-user/mineru2-shared/zengweijun/swe/minions_v148_pac
 MINE  = sorted(glob.glob("/mnt/shared-storage-user/mineru2-shared/zengweijun/swe/mining_v148*"))
 OUT   = sys.argv[1] if len(sys.argv) > 1 else "/tmp/explorer_v3"
 MAX_RESULT_CHARS, MAX_THINK_CHARS = 12000, 20000
+SCHEMA_VERSION = "swe-trajectory/1.0"
 
 REDACT = [
     (re.compile(r"/mnt/shared-storage-user/mineru2-shared/zengweijun"), "/shared"),
@@ -201,6 +202,8 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
     gold_del = len(re.findall(r"^-(?!--)", gold, re.M))
     hidden = sorted(os.path.basename(p) for p in glob.glob(f"{tdir}/task/tests/hidden/*"))
     suite_sh, test_sh = read(f"{tdir}/task/tests/suite.sh"), read(f"{tdir}/task/tests/test.sh")
+    solve_sh = read(f"{tdir}/task/solution/solve.sh")
+    dockerfile = read(f"{tdir}/task/environment/Dockerfile")
     desc = tsk.get("description", "")
     mrepo = REPO_RE.search(desc); repo = mrepo.group(1) if mrepo else None
     title = instruction.split("\n", 1)[0].lstrip("# ").strip() or tsk.get("name", tid)
@@ -215,7 +218,8 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
     environments.append({"id": tid, "title": title, "repository": repo, "instruction": instruction,
                          "gate": gate, "goldFiles": gold_files, "hiddenTests": hidden, "toml": toml})
 
-    for rdir in sorted(glob.glob(f"{tdir}/task/runs/*")):
+    run_dirs = sorted(glob.glob(f"{tdir}/task/runs/*"))
+    for run_ix, rdir in enumerate(run_dirs, 1):
         stamp = os.path.basename(rdir)
         try: res = json.loads(read(f"{rdir}/result.json", "{}"))
         except Exception: res = {}
@@ -290,8 +294,9 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
                                    "content": "[not captured — codex transcript was truncated to its last ~59 KB; "
                                               "trace.jsonl command_result events record the command only, never its output]",
                                    "title": "shell output", "toolName": "shell",
-                                   "toolCallId": f"c{call_no}", "status": "rejected",
-                                   "summary": "output not captured", "timestamp": bb["ts"]})
+                                   "toolCallId": f"c{call_no}", "status": "missing",
+                                   "summary": "output not captured (capture gap, not an agent failure)",
+                                   "timestamp": bb["ts"]})
                 counts["tool_result"] += 1; idx += 1
                 continue
             if tag == "head":
@@ -335,6 +340,23 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
                                           f'model={res.get("model")}\nNo codex transcript was recorded for this run.',
                                "summary": res.get("verdict"), "timestamp": t0})
             counts["system"] += 1; idx += 1
+        if gold.strip():
+            out_events.append({"type": "context", "sourceIndex": idx,
+                               "title": "Gold patch (oracle — not shown to the agent)",
+                               "content": gold[:MAX_RESULT_CHARS],
+                               "summary": f'{len(gold_files)} files · +{gold_add} / -{gold_del}',
+                               "status": "success"})
+            counts["context"] += 1; idx += 1
+        if solve_sh.strip():
+            out_events.append({"type": "context", "sourceIndex": idx, "title": "Oracle solve.sh",
+                               "content": solve_sh[:4000], "summary": "how the gold arm is applied",
+                               "status": "success"})
+            counts["context"] += 1; idx += 1
+        if dockerfile.strip():
+            out_events.append({"type": "context", "sourceIndex": idx, "title": "Task Dockerfile",
+                               "content": dockerfile[:6000], "summary": "environment recipe",
+                               "status": "success"})
+            counts["context"] += 1; idx += 1
         if suite_log.strip():
             out_events.append({"type": "context", "sourceIndex": idx, "title": "Verifier suite.log",
                                "content": redact(suite_log[-MAX_RESULT_CHARS:]), "summary": suite_summary(suite_log),
@@ -390,6 +412,24 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
             "gateOracleRc": gate.get("oracle", {}).get("rc"), "gateOracleReward": gate.get("oracle", {}).get("reward"),
             "gateEmptyTail": gate.get("empty", {}).get("tail"), "gateOracleTail": gate.get("oracle", {}).get("tail"),
             "baseTarball": image.get("base_tarball"),
+            # --- what the dialogue reader's run-source rail reads ---
+            "conversationId": stamp, "snapshot": stamp,
+            "sourceFile": f"tasks/{tid}/task/runs/{stamp}/trace.jsonl",
+            "outcome": res.get("verdict"),
+            "taskSummary": ((P.get("03_commit_gate") or {}).get("judge") or {})
+                             .get("behavior_summary", {}).get("expected_behavior"),
+            "requestId": None,
+            # --- Tier B: pack files that had no field before ---
+            "solveCommand": (solve_sh.strip().split("\n")[-1] if solve_sh.strip() else None),
+            "testEntry": (test_sh.strip().split("\n")[-1] if test_sh.strip() else None),
+            "dockerfileLines": len([l for l in dockerfile.split("\n") if l.strip()]) or None,
+            "buildCommand": image.get("build"),
+            "language": (P.get("01_discover_pairs") or {}).get("language"),
+            "miningWindow": (P.get("01_discover_pairs") or {}).get("window"),
+            "verifiedInstancesTotal": (P.get("01_discover_pairs") or {}).get("verified_instances_total"),
+            "commitStats": m02.get("stats"),
+            "statementTitle": m06.get("statement_title"),
+            "runOrdinal": run_ix, "runsForTask": len(run_dirs),
             "commandsRecorded": len(cmd_events), "transcriptChars": len(transcript or ""),
             "transcriptExecBlocks": sum(1 for e in events if e["type"] == "tool_call"),
             "callsWithOutput": matched,
@@ -418,7 +458,9 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
         errors = sum(1 for e in out_events if e.get("type") == "tool_result" and e.get("status") == "error")
         trajectories.append({
             "id": f"{tid}--{stamp}",
-            "shortId": (tid.split("-mine-")[-1] if "-mine-" in tid else tid)[:8],
+            "shortId": ((tid.split("-mine-")[-1] if "-mine-" in tid else tid)[:8]
+                        + (f"-r{run_ix}" if len(run_dirs) > 1 else "")),
+            "snapshotLabel": (f"run {run_ix}/{len(run_dirs)}" if len(run_dirs) > 1 else None),
             "title": title, "trajectoryClass": "swe", "category": meta.get("category", "coding"),
             "taskType": meta.get("variant", "swe"),
             "situation": "successful" if passed else "failed",
@@ -430,13 +472,32 @@ for tdir in sorted(glob.glob(PACK + "/tasks/*")):
             "toolCallCount": tool_calls, "agentStepCount": res.get("steps"),
             "estimatedTokens": tokens_used,
             "tokenUsage": {"total": tokens_used, "cachedInput": None, "uncachedInput": None,
-                           "output": None, "source": "codex transcript footer"} if tokens_used else {"total": None},
+                           "cacheWrite": None, "output": None, "thinkingTokens": None,
+                           "promptTokens": None, "rawInput": None, "requestId": None,
+                           "serviceTier": None,
+                           "source": "codex transcript footer (run total only)"}
+                          if tokens_used else {"total": None},
             "tokenUsageEstimated": True,
             "errorRate": round(errors / tool_calls, 4) if tool_calls else None,
             "counts": {k: counts.get(k, 0) for k in
                        ("user", "thinking", "assistant", "tool_call", "tool_result", "context", "system")},
             "toolCounts": {"shell": tool_calls}, "environment": env, "events": out_events,
             "captureCoverage": (round(matched / len(cmd_events), 4) if cmd_events else None),
+            # ---- declared capture contract: what the producer does and does not emit ----
+            "capture": {
+                "schemaVersion": SCHEMA_VERSION,
+                "producer": "swe-task-forge/minions mining-v1.2.0 + codex harness",
+                "commandsRecorded": len(cmd_events), "commandsWithOutput": matched,
+                "transcriptChars": len(transcript or ""),
+                "transcriptTruncated": bool(transcript and len(transcript) > 55000),
+                "available": {
+                    "perStepTokens": False, "fullCommandOutput": False,
+                    "structuredRollout": False, "agentFinalDiff": False,
+                    "perTestResults": False, "relayEnvelope": False,
+                    "fileMutations": False, "samplingParams": False,
+                    "eventTimestamps": "tool_call only", "contextWindowPerStep": False,
+                },
+            },
         })
         stats["runs"] += 1
         stats["tokens_found"] += 1 if tokens_used else 0
