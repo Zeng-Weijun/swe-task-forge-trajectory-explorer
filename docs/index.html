@@ -2,232 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SWE Task Forge · Trajectory Explorer</title>
-<meta name="description" content="83 codex:glm-5.3-flash rollouts over 47 swe-task-forge minions v148 tasks: reasoning, shell calls, stdout, verifier logs and mining provenance.">
-<meta name="theme-color" content="#08080A">
+<title>Moved → trajectory-viewer</title>
+<meta http-equiv="refresh" content="3;url=https://zeng-weijun.github.io/trajectory-viewer/trajectory-explorer.html?category=swe">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="fonts.css">
-<link rel="preload" href="fonts/space-grotesk.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/inter-tight.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=20260911-swe-fork">
-<link rel="stylesheet" href="swe-fork.css?v=20260911-swe-fork">
+<style>
+  body { background:#0b0c0e; color:#d9d5cd; font:15px/1.7 ui-sans-serif,system-ui,sans-serif;
+         display:grid; place-items:center; min-height:100vh; margin:0; padding:40px 22px; }
+  main { max-width:560px }
+  h1 { font-size:22px; font-weight:500; margin:0 0 14px }
+  p { color:#8b877f; margin:0 0 12px }
+  a { color:#C8452A }
+  code { font-family:ui-monospace,monospace; font-size:13px; color:#a9a49b }
+</style>
 </head>
 <body>
-<div class="world" aria-hidden="true"><div class="world-grid"></div></div>
-
-<header class="analytics-topbar">
-  <div class="analytics-topbar-inner">
-    <a class="brand" href="./">
-      <span class="brand-mark" aria-hidden="true">
-        <svg class="brand-cube-construct" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path class="brand-cube-outline" d="m32 5 25 14v27L32 59 7 46V19L32 5Z"/>
-          <path class="brand-cube-grid" d="m7 19 25 14 25-14M32 33v26"/>
-          <path class="brand-cube-top" d="m32 5 25 14-25 14L7 19 32 5Z"/>
-        </svg>
-      </span>
-      <span class="brand-name">swe-task-forge</span>
-    </a>
-    <span class="analytics-product-name">minions v148 · Trajectory Analytics</span>
-    <nav class="analytics-category-nav" id="topCategoryNav" aria-label="Trajectory categories">
-      <button type="button" data-category="swe" aria-pressed="true">SWE · 83 runs</button>
-    </nav>
-    <a class="analytics-back-link" href="https://github.com/Zeng-Weijun/swe-task-forge-trajectory-explorer">Repo &amp; data →</a>
-  </div>
-</header>
-
-<main class="trajectory-main">
-  <aside class="analytics-sidebar" id="analyticsSidebar">
-    <div class="analytics-sidebar-head">
-      <p>Trajectory sources</p>
-      <button id="sidebarClose" type="button" aria-label="Hide trajectory sources" title="Hide trajectory sources">‹</button>
-    </div>
-    <label class="sidebar-search">
-      <span>Find run</span>
-      <input id="runSearch" type="search" placeholder="Task, ID, repository...">
-    </label>
-    <nav class="sidebar-groups" id="sidebarGroups" aria-label="Trajectory source groups"></nav>
-    <div class="sidebar-filter-section">
-      <p>Outcome</p>
-      <label><input type="checkbox" data-run-filter="successful" checked> Successful</label>
-      <label><input type="checkbox" data-run-filter="failed" checked> Failed / error</label>
-    </div>
-    <div class="sidebar-filter-section snapshot-filter-section" hidden>
-      <p>Snapshots</p>
-      <label><input type="checkbox" id="deduplicateSessions"> Longest snapshot per session</label>
-      <small id="deduplicateHint">42 snapshots → 22 longest</small>
-    </div>
-    <div class="sidebar-footnote">
-      <span id="sidebarRunCount">0 trajectories</span>
-      <small>minions_v148_pack_20260911 · 47 tasks · 83 rollouts · codex:glm-5.3-flash</small>
-    </div>
-  </aside>
-
-  <section class="analytics-content">
-    <div class="analytics-content-inner">
-      <button class="sidebar-open" id="sidebarOpen" type="button">Show trajectory sources</button>
-
-      <section class="analytics-category-empty" id="categoryEmpty" hidden>
-        <p>Trajectory source</p>
-        <h1 id="categoryEmptyTitle">No trajectories yet</h1>
-        <span id="categoryEmptyCopy">This source is ready for future runs.</span>
-      </section>
-
-      <div id="runView">
-
-      <header class="run-header">
-        <div class="run-breadcrumb" id="runBreadcrumb">SWE</div>
-        <div class="run-title-row">
-          <div>
-            <h1 id="trajectoryName">Trajectory</h1>
-            <p id="runSubtitle">Loading trajectory...</p>
-          </div>
-          <span class="run-status" id="trajectoryResult">Successful</span>
-        </div>
-        <div class="run-meta-line" id="runMetaLine"></div>
-      </header>
-
-      <dl class="run-metrics" aria-label="Run metrics">
-        <div><dt id="metricPrimaryLabel">Reward</dt><dd id="metricReward">—</dd></div>
-        <div><dt>Duration</dt><dd id="metricDuration">—</dd></div>
-        <div><dt>Agent steps</dt><dd id="metricSteps">—</dd></div>
-        <div><dt>Tool calls</dt><dd id="metricTools">—</dd></div>
-        <div><dt>Total tokens</dt><dd id="metricTokens">—</dd></div>
-        <div><dt id="metricOutcomeLabel">Verification</dt><dd id="metricVerification">—</dd></div>
-      </dl>
-
-      <details class="analytics-panel pipeline-panel" id="pipelinePanel" hidden>
-        <summary>
-          <span><small id="pipelineSourceLabel">Mining pipeline</small><strong>Provenance &amp; gate evidence</strong></span>
-          <span class="pipeline-summary-status" id="pipelineSummaryStatus">—</span>
-          <i aria-hidden="true">+</i>
-        </summary>
-        <div class="pipeline-detail-body">
-          <section class="pipeline-detail-section pipeline-cleaning-section">
-            <h3>Commit provenance</h3>
-            <dl class="pipeline-facts" id="pipelineCleanFacts"></dl>
-          </section>
-          <section class="pipeline-detail-section pipeline-classification-section">
-            <h3>Task construction</h3>
-            <dl class="pipeline-facts" id="pipelineClassificationFacts"></dl>
-            <div class="pipeline-reason-list" id="pipelineReasonList"></div>
-          </section>
-          <section class="pipeline-detail-section">
-            <h3>Two-arm gate</h3>
-            <dl class="pipeline-facts" id="pipelineRoutingFacts"></dl>
-          </section>
-          <section class="pipeline-detail-section">
-            <h3>Suite-flip evidence</h3>
-            <dl class="pipeline-facts" id="pipelineQualityFacts"></dl>
-          </section>
-          <section class="pipeline-detail-section">
-            <h3>Gold patch &amp; hidden tests</h3>
-            <dl class="pipeline-facts" id="pipelineDifficultyFacts"></dl>
-          </section>
-          <section class="pipeline-detail-section">
-            <h3>Run outcome</h3>
-            <dl class="pipeline-facts" id="pipelineThinkingFacts"></dl>
-          </section>
-          <section class="pipeline-detail-section pipeline-segment-section">
-            <h3>Gate arms (raw pytest tails)</h3>
-            <dl class="pipeline-facts" id="pipelineSegmentFacts"></dl>
-            <div class="pipeline-segments" id="pipelineSegments"></div>
-          </section>
-          <section class="pipeline-detail-section pipeline-dataset-section">
-            <h3>Pack &amp; budgets</h3>
-            <dl class="pipeline-facts" id="pipelineDatasetFacts"></dl>
-          </section>
-        </div>
-      </details>
-
-      <section class="analytics-panel environment-panel" id="environmentPanel" aria-labelledby="environmentTitle">
-        <header class="panel-heading">
-          <div><p>Environment</p><h2 id="environmentTitle">Environment profile</h2></div>
-          <span id="environmentFamily">—</span>
-        </header>
-        <dl class="environment-grid" id="environmentGrid"></dl>
-        <div class="lifecycle" id="environmentLifecycle" hidden></div>
-      </section>
-
-      <div class="analytics-summary-grid">
-        <section class="analytics-panel task-panel" aria-labelledby="taskTitle">
-          <header class="panel-heading"><div><p>Task</p><h2 id="taskTitle">Task summary</h2></div></header>
-          <p class="task-statement" id="taskStatement">—</p>
-          <dl class="compact-facts" id="taskFacts"></dl>
-        </section>
-
-        <section class="analytics-panel verification-panel" aria-labelledby="verificationTitle">
-          <header class="panel-heading"><div><p>Outcome</p><h2 id="verificationTitle">Verification</h2></div></header>
-          <dl class="verification-list" id="verificationList"></dl>
-        </section>
-      </div>
-
-      <section class="analytics-panel token-panel" aria-labelledby="tokenAccountingTitle">
-        <header class="panel-heading token-panel-head">
-          <div><p id="tokenPanelKicker">Usage</p><h2 id="tokenAccountingTitle">Token composition</h2></div>
-          <strong id="tokenTotal">0</strong>
-        </header>
-        <div class="token-composition" aria-hidden="true">
-          <i class="token-cached" id="tokenCachedBar"></i>
-          <i class="token-uncached" id="tokenUncachedBar"></i>
-          <i class="token-output" id="tokenOutputBar"></i>
-        </div>
-        <dl class="token-breakdown">
-          <div><dt><i class="token-key cached"></i>Cached Input</dt><dd id="tokenCached">0</dd><small id="tokenCachedPct">0%</small></div>
-          <div><dt><i class="token-key uncached"></i>Uncached Input</dt><dd id="tokenUncached">0</dd><small id="tokenUncachedPct">0%</small></div>
-          <div><dt><i class="token-key output"></i>Output</dt><dd id="tokenOutput">0</dd><small id="tokenOutputPct">0%</small></div>
-        </dl>
-        <p class="token-usage-note" id="tokenUsageNote"></p>
-      </section>
-
-      <div class="timeline-workspace" id="timelineWorkspace">
-      <div class="timeline-toolbar" id="timelineToolbar">
-        <div class="timeline-toolbar-title">
-          <p>Agent trajectory</p>
-          <strong id="visibleCount">0</strong><span id="eventCount">events</span>
-        </div>
-        <label class="timeline-search"><span>Search</span><input id="trajectorySearch" type="search" placeholder="Messages, tools, commands..."></label>
-        <div class="raw-filter-bar" id="trajectoryFilters" aria-label="Filter trajectory event types">
-          <button type="button" data-filter="user" aria-pressed="true">User <b>0</b></button>
-          <button type="button" data-filter="thinking" aria-pressed="true">Thinking <b>0</b></button>
-          <button type="button" data-filter="assistant" aria-pressed="true">Assistant <b>0</b></button>
-          <button type="button" data-filter="tool_call" aria-pressed="true">Tool calls <b>0</b></button>
-          <button type="button" data-filter="tool_result" aria-pressed="true">Results <b>0</b></button>
-          <button type="button" data-filter="context" aria-pressed="false">Context <b>0</b></button>
-          <button type="button" data-filter="system" aria-pressed="false">System <b>0</b></button>
-          <button class="high-quality-filter" type="button" id="highQualityOnly" aria-pressed="false" hidden>High-quality only <b id="highQualityCount">0</b></button>
-          <button type="button" id="expandVisible">Expand</button>
-          <button type="button" id="collapseAll">Collapse</button>
-        </div>
-      </div>
-
-      <section class="raw-timeline-shell" aria-labelledby="timelineTitle">
-        <header class="trajectory-panel-head compact">
-          <div><p class="trajectory-overline">Full message stream</p><h2 id="timelineTitle">Complete timeline</h2></div>
-          <div class="timeline-view-actions">
-            <span class="state-status" id="timelineStatus">All events</span>
-            <div class="timeline-view-switch" role="group" aria-label="Message stream view">
-              <button type="button" id="linearViewButton" aria-pressed="true">Timeline</button>
-              <button type="button" id="dialogueViewButton" aria-pressed="false">Two-lane reader</button>
-            </div>
-            <button class="timeline-fullscreen-button" type="button" id="timelineFullscreen" aria-pressed="false">Fullscreen <span aria-hidden="true">⛶</span></button>
-          </div>
-        </header>
-        <div class="raw-timeline" id="rawTimeline" aria-live="polite"></div>
-        <div class="embedded-dialogue" id="embeddedDialogue" hidden>
-          <iframe id="dialogueFrame" title="Two-lane trajectory reader" src="about:blank"></iframe>
-        </div>
-        <p class="raw-empty" id="rawEmpty" hidden>No events match the current filters.</p>
-      </section>
-      </div>
-      </div>
-    </div>
-  </section>
+<main>
+  <h1>Moved</h1>
+  <p>This viewer and its SWE corpus are now maintained in
+     <a href="https://github.com/Zeng-Weijun/trajectory-viewer">Zeng-Weijun/trajectory-viewer</a>,
+     alongside the two-lane reader and the feedback corpus.</p>
+  <p>Redirecting to
+     <a href="https://zeng-weijun.github.io/trajectory-viewer/trajectory-explorer.html?category=swe">the maintained page</a>…</p>
+  <p><code>explorer-archived.html</code> still holds the frozen copy from before the move.</p>
 </main>
-
-<script src="script.js"></script>
-<script src="trajectory-data.js"></script>
-<script src="trajectory-explorer.js?v=20260911-swe-fork"></script>
 </body>
 </html>
